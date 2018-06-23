@@ -100,7 +100,8 @@ class NunjucksAdapter extends Adapter {
         setEnv('_target', meta.target, context);
         setEnv('_env', meta.env, context);
         setEnv('_config', this._app.config(), context);
-        return this.engine.renderStringAsync(str, context);
+        const newstr = this._app.config().cli.mode == 'compile' ? str.replace(/\{%.*%\}.*\{#.*phtml=(\S*).*#\}/g, '{{ $1 }}') : str;
+        return this.engine.renderStringAsync(newstr, context);
     }
 
 }
