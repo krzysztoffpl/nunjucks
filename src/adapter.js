@@ -7,6 +7,9 @@ const path     = require('path');
 const fs       = require('fs');
 const Adapter  = require('@frctl/fractal').Adapter;
 
+const templateTagReplacementRegexp = /\{%[^\{]*%\}\s*\{#\s*phtml=(\S*)\s*#\}/g;
+const templateBlockReplacementRegexp = /{#\s*(\d)\s*#(?:(?!{#\s*\1).\r?\n?)+{#\s*\1\s*phtml=(\S*)\s*#\}/g;
+
 class NunjucksAdapter extends Adapter {
 
     constructor(source, loadPaths, app) {
@@ -31,9 +34,10 @@ class NunjucksAdapter extends Adapter {
                 }
                 const view = self.getView(handle);
                 if (view) {
+                    const content = app.config().render.mode == 'templates' ? view.content.replace(templateBlockReplacementRegexp, '{{ $2 }}').replace(templateTagReplacementRegexp, '{{ $1 }}') : view.content;
                     return {
-                        src: view.content,
-                        path: view.content,
+                        src: content,
+                        path: content,
                         noCache: true
                     };
                 }
@@ -74,7 +78,7 @@ class NunjucksAdapter extends Adapter {
                     };
 
                     return {
-                        src: fs.readFileSync(fullpath, 'utf-8'),
+                        src: app.config().render.mode == 'templates' ? fs.readFileSync(fullpath, 'utf-8').replace(templateBlockReplacementRegexp, '{{ $2 }}').replace(templateTagReplacementRegexp, '{{ $1 }}') : fs.readFileSync(fullpath, 'utf-8'),
                         path: fullpath,
                         noCache: true
                     };
@@ -100,7 +104,7 @@ class NunjucksAdapter extends Adapter {
         setEnv('_target', meta.target, context);
         setEnv('_env', meta.env, context);
         setEnv('_config', this._app.config(), context);
-        const newstr = this._app.config().cli.mode == 'compile' ? str.replace(/\{%[^\{]*%\}\s*\{#\s*phtml=(\S*)\s*#\}/g, '{{ $1 }}') : str;
+        const newstr = this._app.config().render.mode == 'templates' ? str.replace(templateBlockReplacementRegexp, '{{ $2 }}').replace(templateTagReplacementRegexp, '{{ $1 }}') : str;
         return this.engine.renderStringAsync(newstr, context);
     }
 
